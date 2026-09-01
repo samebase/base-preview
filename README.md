@@ -85,6 +85,10 @@ Cloudflare supplies the connected Worker name through `WRANGLER_CI_OVERRIDE_NAME
 that value for production deploys. `scripts/deploy-worker-preview.ts` passes the same value to
 `wrangler preview --worker-name`. This keeps the Worker name out of the repository.
 
+Enable Preview builds for non-production branches, but keep the Preview command set to
+`pnpm run deploy:preview`. Cloudflare can still show an **Enable Worker Previews** banner because it
+cannot inspect the package script. The repository adapter already runs `wrangler preview`.
+
 See [`docs/cloudflare-workers-builds.md`](./docs/cloudflare-workers-builds.md) for the detailed build
 and deploy behavior. Use the
 [do-it-yourself guide](https://samebase.com/docs/do-it-yourself) for the provider dashboard setup.

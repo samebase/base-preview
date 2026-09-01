@@ -16,7 +16,12 @@ These command names are the Samebase repository interface. Keep them stable. A r
 change the scripts behind the commands when its deployment needs change.
 
 Cloudflare can infer `pnpm run build` from the exact `build` script in `package.json`. Keep that
-value. Enable Worker Previews and set the other two commands as shown above.
+value. Enable Preview builds and set the other two commands as shown above.
+
+Cloudflare can still show an **Enable Worker Previews** banner when the Preview command is
+`pnpm run deploy:preview`. Cloudflare documents this button as a command change from an old deploy
+command to `npx wrangler preview`. Keep the stable package command because its adapter already runs
+`wrangler preview`.
 
 Do not put the Worker name in `wrangler.jsonc`. Workers Builds supplies the connected Worker name
 through `WRANGLER_CI_OVERRIDE_NAME`.
@@ -26,7 +31,7 @@ through `WRANGLER_CI_OVERRIDE_NAME`.
 1. Connect the repository and use the three dashboard commands above.
 2. Add the production build variables and secrets.
 3. Run the first production deployment.
-4. In Worker Settings, open Builds and enable Worker Previews.
+4. In Worker Settings, open Builds and enable Preview builds for non-production branches.
 5. Open the Previews Base build settings.
 6. Replace the copied production `CONVEX_DEPLOY_KEY` secret with the Convex project Preview deploy
    key.
