@@ -15,7 +15,6 @@
     "dev:frontend": "vp dev",
     "dev:worktree": "node ./scripts/run-worktree-dev.ts",
     "check": "vp check && vp run typecheck && vp test && vp run verify:cloudflare-redirects && vp run verify:dev-launcher-version",
-    "build": "vp run build:cloudflare",
     "build:app": "vp run check && vp build",
     "build:cloudflare": "node ./scripts/build-cloudflare.ts",
     "deploy": "node ./scripts/deploy-cloudflare.ts deploy",
