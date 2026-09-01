@@ -48,34 +48,42 @@ The core workflow runs on macOS, Linux, and Windows. See
 
 ## Checks and builds
 
-| Command                   | Purpose                                                        |
-| ------------------------- | -------------------------------------------------------------- |
-| `pnpm run check`          | Format, lint, type-check, test, and verify generated redirects |
-| `pnpm run build`          | Check and build the application without deploying              |
-| `pnpm run deploy:convex`  | Deploy Convex and build against the selected deployment        |
-| `pnpm run deploy`         | Deploy Convex, build the application, and deploy the Worker    |
-| `pnpm run deploy:dry-run` | Validate a production Worker upload without publishing it      |
+| Command                   | Purpose                                                                     |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `pnpm run check`          | Format, lint, type-check, test, and verify generated redirects              |
+| `pnpm run build`          | Run the provider build contract. A local run only checks and builds the app |
+| `pnpm run deploy`         | Publish the production Worker                                               |
+| `pnpm run deploy:preview` | Publish a Worker Preview                                                    |
+| `pnpm run deploy:dry-run` | Build the app and validate a production Worker upload                       |
 
-The `build` and `deploy:dry-run` commands do not write to a remote provider.
+`build`, `deploy`, and `deploy:preview` are the stable Samebase deployment interface. Samebase and
+Cloudflare call these commands. The scripts behind them can change when a repository needs a
+different deployment sequence.
+
+Outside Cloudflare Workers Builds, `pnpm run build` does not write to a remote provider. It runs the
+internal application build. Workers Builds uses the same command to deploy the selected Convex
+backend before it builds the application.
 
 ## Deployment contract
 
-Cloudflare Workers Builds runs `pnpm run deploy:convex` for all branches. It then uses:
+Cloudflare Workers Builds uses:
 
-| Branch type             | Deploy command         | `CONVEX_DEPLOY_KEY` value  |
-| ----------------------- | ---------------------- | -------------------------- |
-| `main`                  | `npx wrangler deploy`  | Production deploy key      |
-| Non-production branches | `npx wrangler preview` | Project Preview deploy key |
+| Dashboard field | Command                   |
+| --------------- | ------------------------- |
+| Build command   | `pnpm run build`          |
+| Deploy command  | `pnpm run deploy`         |
+| Preview command | `pnpm run deploy:preview` |
 
-Each Cloudflare trigger stores its key under the same secret name. `scripts/deploy-convex.ts` gives
-non-production builds the `WORKERS_CI_BRANCH` Preview name and fails closed when Workers Builds does
-not provide a branch. `scripts/verify-current-branch-head.ts` prevents an older concurrent build
-from deploying backend code after a newer commit reaches the same branch. `convex deploy --cmd`
-supplies `VITE_CONVEX_URL` to the frontend build, so it is not a Cloudflare build variable.
+The production and Preview build settings each store their Convex key under
+`CONVEX_DEPLOY_KEY`. `scripts/build-cloudflare.ts` gives a non-production build the
+`WORKERS_CI_BRANCH` Preview name. It fails closed when Workers Builds does not provide a branch or
+the canonical key. `scripts/verify-current-branch-head.ts` prevents an older concurrent build from
+deploying backend code after a newer commit reaches the same branch. `convex deploy --cmd` supplies
+`VITE_CONVEX_URL` to the frontend build, so it is not a Cloudflare build variable.
 
-The Worker name in `wrangler.jsonc` must match the connected Cloudflare Worker. The private-beta
-`wrangler preview` command needs that name and does not use Cloudflare's
-`WRANGLER_CI_OVERRIDE_NAME` value when the Wrangler file has no name.
+Cloudflare supplies the connected Worker name through `WRANGLER_CI_OVERRIDE_NAME`. Wrangler uses
+that value for production deploys. `scripts/deploy-worker-preview.ts` passes the same value to
+`wrangler preview --worker-name`. This keeps the Worker name out of the repository.
 
 See [`docs/cloudflare-workers-builds.md`](./docs/cloudflare-workers-builds.md) for the detailed build
 and deploy behavior. Use the
@@ -86,8 +94,10 @@ and deploy behavior. Use the
 - `package.json` defines the supported development, check, build, and deploy commands.
 - `prerender.config.ts` defines the public pages shared by TanStack Start and Cloudflare.
 - `vite.config.ts` defines the TanStack Start SPA and prerender behavior.
-- `wrangler.jsonc` defines the Worker name, static assets, SPA fallback, and preview URLs.
-- `scripts/deploy-convex.ts` owns the Convex deployment and application build sequence.
+- `wrangler.jsonc` defines static assets, SPA fallback, and preview URLs.
+- `scripts/build-cloudflare.ts` owns the Workers Build Convex deployment and application build
+  sequence.
+- `scripts/deploy-worker-preview.ts` passes the connected Worker name to Wrangler Preview.
 - `convex/` contains the backend, schema, authentication, and generated Convex bindings.
 - `src/` contains the React application and routes.
 

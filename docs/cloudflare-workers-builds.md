@@ -2,37 +2,24 @@
 
 This app uses Cloudflare Workers Builds for production and branch Preview deployments.
 
-## Repository requirement
-
-Set the connected Worker name in `wrangler.jsonc`:
-
-```jsonc
-{
-  "name": "base-preview",
-}
-```
-
-The private-beta `wrangler preview` command needs this value. Workers Builds sets
-`WRANGLER_CI_OVERRIDE_NAME`, but Wrangler 4.118.0 does not use that value to resolve the target of
-the Preview command.
-
-## Dashboard commands
+## Samebase command interface
 
 Use these commands when you connect the repository:
 
-| Dashboard field | Command                  |
-| --------------- | ------------------------ |
-| Build command   | `pnpm run deploy:convex` |
-| Deploy command  | `npx wrangler deploy`    |
-| Preview command | `npx wrangler preview`   |
+| Dashboard field | Command                   |
+| --------------- | ------------------------- |
+| Build command   | `pnpm run build`          |
+| Deploy command  | `pnpm run deploy`         |
+| Preview command | `pnpm run deploy:preview` |
 
-Cloudflare detects the package manager from the repository metadata. It enters `pnpm run build`
-only when `package.json` has the exact `build` script. A `build:*` script, Vite, TanStack Start, or
-Wrangler does not cause Cloudflare to enter a Build command.
+These command names are the Samebase repository interface. Keep them stable. A repository can
+change the scripts behind the commands when its deployment needs change.
 
-Replace the inferred `pnpm run build` value with `pnpm run deploy:convex`. Keep `pnpm run build` as
-a pure application build. The shared Cloudflare Build step must select and deploy the correct
-Convex deployment before the production or Preview Worker command runs.
+Cloudflare can infer `pnpm run build` from the exact `build` script in `package.json`. Keep that
+value. Enable Worker Previews and set the other two commands as shown above.
+
+Do not put the Worker name in `wrangler.jsonc`. Workers Builds supplies the connected Worker name
+through `WRANGLER_CI_OVERRIDE_NAME`.
 
 ## First setup
 
@@ -40,13 +27,13 @@ Convex deployment before the production or Preview Worker command runs.
 2. Add the production build variables and secrets.
 3. Run the first production deployment.
 4. In Worker Settings, open Builds and enable Worker Previews.
-5. Open the Previews Base tab.
+5. Open the Previews Base build settings.
 6. Replace the copied production `CONVEX_DEPLOY_KEY` secret with the Convex project Preview deploy
    key.
 7. Delete the copied `SAMEBASE_CONVEX_PROJECT` variable from Previews Base.
 
 Cloudflare copies the production build variables and secrets into Previews Base when Worker
-Previews is enabled. Do not start a branch build until the copied production key is replaced.
+Previews is enabled. Do not start a branch build until you replace the copied production key.
 
 ## Build variables and secrets
 
@@ -61,25 +48,32 @@ Use the same secret name with a different value in each build scope:
 Do not add `PREVIEW_CONVEX_DEPLOY_KEY`. Each build scope supplies its key through
 `CONVEX_DEPLOY_KEY`.
 
-`SAMEBASE_CONVEX_PROJECT` is a readable Samebase marker for the complete Worker-to-Convex-project
-connection. The build does not read it. Keep it only in Production.
+`SAMEBASE_CONVEX_PROJECT` records the complete Worker-to-Convex-project connection for Samebase.
+The build does not read it. Keep it only in Production.
 
 Do not add `VITE_CONVEX_URL`. `convex deploy --cmd` supplies the selected deployment URL to the
 frontend build.
 
 ## Build order
 
-The shared Cloudflare Build command runs these operations:
+`pnpm run build` behaves differently in two contexts:
 
-1. `deploy-convex.ts` reads `WORKERS_CI_BRANCH` and gives a non-production branch an explicit Convex
-   Preview name.
-2. `convex deploy` runs `pnpm run build` with the selected Convex URL.
+- Outside Workers Builds, it runs only the internal application checks and build.
+- Inside Workers Builds, it requires `WORKERS_CI_BRANCH` and `CONVEX_DEPLOY_KEY`. It deploys Convex
+  and then runs the internal application build with the selected Convex URL.
+
+During a Workers Build, `scripts/build-cloudflare.ts` runs these operations:
+
+1. It gives each non-production branch an explicit Convex Preview name from `WORKERS_CI_BRANCH`.
+2. `convex deploy` runs `pnpm run build:app` with the selected Convex URL.
 3. The build verifies that the checked-out commit is still the current branch head.
 4. Convex deploys the backend.
 5. The script creates missing Convex Auth variables on the same production or Preview deployment.
 
-Cloudflare then runs `wrangler deploy` for production or `wrangler preview` for a branch. The
-Wrangler file supplies the Worker name for both commands.
+Cloudflare then runs `pnpm run deploy` for production or `pnpm run deploy:preview` for a branch.
+The production command uses Wrangler directly. Wrangler reads `WRANGLER_CI_OVERRIDE_NAME` for this
+command. The Preview adapter passes that name to `wrangler preview --worker-name` because the
+Preview command does not use it to select the target.
 
 Cloudflare can build more than one commit from one branch at the same time. The branch-head check
 stops an older build before it can replace newer Convex functions. It applies to `main` and Preview
@@ -87,19 +81,41 @@ branches.
 
 ## Local commands
 
-Use one command for a complete local provider deployment:
+A local build is safe and does not deploy Convex:
 
 ```sh
-pnpm run deploy
+pnpm run build
 ```
 
-Use a production dry-run to validate the Worker package without publishing it:
+To validate a Worker package without publishing it, pass the Worker name to Wrangler:
 
 ```sh
-pnpm run deploy:dry-run
+pnpm run deploy:dry-run --name my-worker
 ```
 
-Worker Previews do not have a dry-run option.
+To publish existing build output to production, use:
+
+```sh
+pnpm run deploy --name my-worker
+```
+
+For a local Worker Preview, set `CLOUDFLARE_WORKER_NAME` before you run the Preview command.
+
+On macOS or Linux:
+
+```sh
+export CLOUDFLARE_WORKER_NAME=my-worker
+pnpm run deploy:preview
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:CLOUDFLARE_WORKER_NAME = "my-worker"
+pnpm run deploy:preview
+```
+
+The local deploy commands publish the current files in `dist/client`. They do not deploy Convex.
 
 ## References
 

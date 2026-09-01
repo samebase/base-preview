@@ -1,0 +1,79 @@
+// Samebase source build: v1989
+import { describe, expect, it } from "vite-plus/test";
+
+import { selectCloudflareBuildPlan } from "./build-cloudflare.ts";
+
+describe("build-cloudflare", () => {
+  it("runs only the application build outside Workers Builds", () => {
+    expect(
+      selectCloudflareBuildPlan({
+        CONVEX_DEPLOY_KEY: "ignored-local-key",
+        WORKERS_CI_BRANCH: "feature-branch",
+      }),
+    ).toEqual({
+      kind: "app",
+      buildArgs: ["run", "build:app"],
+    });
+  });
+
+  it("requires the branch during Workers Builds", () => {
+    expect(() =>
+      selectCloudflareBuildPlan({
+        CONVEX_DEPLOY_KEY: "production-key",
+        WORKERS_CI: "1",
+      }),
+    ).toThrow("WORKERS_CI_BRANCH");
+  });
+
+  it("requires the canonical key during Workers Builds", () => {
+    expect(() =>
+      selectCloudflareBuildPlan({
+        WORKERS_CI: "1",
+        WORKERS_CI_BRANCH: "feature-branch",
+      }),
+    ).toThrow("Set CONVEX_DEPLOY_KEY");
+  });
+
+  it("deploys production Convex before the application build", () => {
+    expect(
+      selectCloudflareBuildPlan({
+        CONVEX_DEPLOY_KEY: "production-key",
+        WORKERS_CI: "true",
+        WORKERS_CI_BRANCH: "main",
+      }),
+    ).toEqual({
+      kind: "production",
+      deployArgs: [
+        "exec",
+        "convex",
+        "deploy",
+        "--cmd",
+        "pnpm run build:app && node ./scripts/verify-current-branch-head.ts",
+      ],
+      authArgs: [],
+    });
+  });
+
+  it("uses the branch name for the Convex Preview and auth setup", () => {
+    expect(
+      selectCloudflareBuildPlan({
+        CONVEX_DEPLOY_KEY: "preview-key",
+        WORKERS_CI: "true",
+        WORKERS_CI_BRANCH: "feature-branch",
+      }),
+    ).toEqual({
+      kind: "preview",
+      previewName: "feature-branch",
+      deployArgs: [
+        "exec",
+        "convex",
+        "deploy",
+        "--preview-name",
+        "feature-branch",
+        "--cmd",
+        "pnpm run build:app && node ./scripts/verify-current-branch-head.ts",
+      ],
+      authArgs: ["--preview-name", "feature-branch"],
+    });
+  });
+});
