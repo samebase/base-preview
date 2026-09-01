@@ -34,6 +34,17 @@ describe("build-cloudflare", () => {
     ).toThrow("Set CONVEX_DEPLOY_KEY");
   });
 
+  it("requires the least-privilege production key", () => {
+    expect(() =>
+      selectCloudflareBuildPlan({
+        WORKERS_CI: "1",
+        WORKERS_CI_BRANCH: "main",
+      }),
+    ).toThrow(
+      "deployment:deploy, deployment:env:view, deployment:env:write, and deployment:data:view",
+    );
+  });
+
   it("deploys production Convex before the application build", () => {
     expect(
       selectCloudflareBuildPlan({

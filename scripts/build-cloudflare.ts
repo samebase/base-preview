@@ -67,7 +67,10 @@ function requireConvexDeployKey(env: NodeJS.ProcessEnv, branch: string) {
     return;
   }
 
-  const keyKind = branch === "main" ? "production deploy key" : "project Preview deploy key";
+  const keyKind =
+    branch === "main"
+      ? "production deploy key with deployment:deploy, deployment:env:view, deployment:env:write, and deployment:data:view permissions"
+      : "project Preview deploy key";
   throw new Error(
     `Set CONVEX_DEPLOY_KEY in the Cloudflare build settings for ${branch}. Use a Convex ${keyKind}.`,
   );
