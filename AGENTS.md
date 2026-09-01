@@ -51,8 +51,8 @@ remove the line when you edit the file.
   extension scanner.
 - Run `pnpm run check`. It checks formatting, lint, browser TypeScript, Node TypeScript, Convex
   TypeScript, tests, and generated Cloudflare redirects.
-- Run `pnpm run build` before a deploy. The real Cloudflare build path runs the complete check before
-  it builds the app.
+- Run `pnpm run build` before a local deploy. Workers Builds runs `pnpm run deploy:convex`, which
+  calls the pure build before it deploys Convex.
 
 <!-- convex-ai-start -->
 

@@ -5,12 +5,24 @@ import process from "node:process";
 import { pathToFileURL } from "node:url";
 
 const modes = {
-  deploy: ["deploy"],
-  preview: ["versions", "upload"],
+  deploy: {
+    command: ["deploy"],
+    workerNameFlag: "--name",
+  },
+  preview: {
+    command: ["preview"],
+    workerNameFlag: "--worker-name",
+  },
 } as const;
 
 function isReservedWranglerFlag(value: string) {
-  return value === "--name" || value.startsWith("--name=") || value === "-n";
+  return (
+    value === "--name" ||
+    value.startsWith("--name=") ||
+    value === "-n" ||
+    value === "--worker-name" ||
+    value.startsWith("--worker-name=")
+  );
 }
 
 function isDryRunFlag(value: string) {
@@ -78,7 +90,7 @@ export function selectCloudflareDeployPlan(
 
   if (extraArgs.some(isReservedWranglerFlag)) {
     throw new Error(
-      "Do not pass Wrangler --name/-n manually. Set CLOUDFLARE_WORKER_NAME or let Workers Builds provide WRANGLER_CI_OVERRIDE_NAME.",
+      "Do not pass a Wrangler Worker name manually. Set CLOUDFLARE_WORKER_NAME or let Workers Builds provide WRANGLER_CI_OVERRIDE_NAME.",
     );
   }
 
@@ -91,10 +103,15 @@ export function selectCloudflareDeployPlan(
   const workerName = readWorkerName(env);
   const isWorkersBuild = env["WORKERS_CI"] === "1" || env["WORKERS_CI"] === "true";
   const isDryRun = extraArgs.some(isDryRunFlag);
+  if (modeArg === "preview" && extraArgs.some((value) => value.startsWith("--dry-run"))) {
+    throw new Error("Wrangler Worker Previews do not support --dry-run.");
+  }
+
+  const mode = modes[modeArg];
 
   return {
-    buildArgs: isWorkersBuild ? null : ["run", isDryRun ? "build:app" : "build:cloudflare"],
-    wranglerArgs: [...modes[modeArg], "--name", workerName, ...extraArgs],
+    buildArgs: isWorkersBuild ? null : ["run", isDryRun ? "build" : "deploy:convex"],
+    wranglerArgs: [...mode.command, mode.workerNameFlag, workerName, ...extraArgs],
   };
 }
 
