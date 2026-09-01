@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "base-preview",
   "compatibility_date": "2026-05-14",
   "preview_urls": true,
   "assets": {

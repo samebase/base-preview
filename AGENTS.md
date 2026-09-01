@@ -51,8 +51,10 @@ remove the line when you edit the file.
   extension scanner.
 - Run `pnpm run check`. It checks formatting, lint, browser TypeScript, Node TypeScript, Convex
   TypeScript, tests, and generated Cloudflare redirects.
-- Run `pnpm run build` before a local deploy. Workers Builds runs `pnpm run deploy:convex`, which
-  calls the pure build before it deploys Convex.
+- Use `pnpm run deploy` for a local provider deploy. It deploys Convex, runs the pure application
+  build with the selected Convex URL, and then deploys the Worker.
+- Keep the Worker name in `wrangler.jsonc` equal to the connected Cloudflare Worker name. Worker
+  Previews require this value.
 
 <!-- convex-ai-start -->
 
